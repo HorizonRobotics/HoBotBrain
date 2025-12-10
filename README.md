@@ -2,12 +2,14 @@
 A unified agent system for general-purpose robots.
 
 
-## 🤖 🧭 FSR-VLN
-[![Projcet](https://img.shields.io/badge/📖-Project-blue)]([https://github.com/HorizonRobotics/EmbodiedGen](https://horizonrobotics.github.io/robot_lab/fsr-vln))
+## 🤖 FSR-VLN
+[![Projcet](https://img.shields.io/badge/📖-Project-blue)](https://horizonrobotics.github.io/robot_lab/fsr-vln)
 [![📄 arXiv](https://img.shields.io/badge/📄-arXiv-b31b1b)](https://arxiv.org/abs/2506.10600)
-[![中文介绍](https://img.shields.io/badge/中文介绍-07C160?logo=wechat&logoColor=white)](https://mp.weixin.qq.com/s/HqnBlTNqOL3Z4Kg8tLHCSw))
+[![中文介绍](https://img.shields.io/badge/中文介绍-07C160?logo=wechat&logoColor=white)](https://mp.weixin.qq.com/s/HqnBlTNqOL3Z4Kg8tLHCSw)
 
 
+## Checklist
+- [ ] Release the code of FSR-VLN.
 
 ## 📚 Publications & Citation
 
