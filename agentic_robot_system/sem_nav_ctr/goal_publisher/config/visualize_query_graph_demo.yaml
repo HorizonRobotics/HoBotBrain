@@ -4,8 +4,8 @@ main:
   dataset: horizon #scannet #horizon # hm3dsem #replica #iphone #horizon #replica #horizon #replica # scannet, replica
   scene_id: rosbag2_2025_09_01-17_28_01  #rosbag2_2025_09_01-17_28_01 #rosbag2_2025_08_07-17_31_57 #rosbag2_2025_06_24-12_11_07_fast_livo # #rosbag2_2025_06_24-12_11_07_fast_livo #rosbag2_2025_07_18-19_16_33 #rosbag2_2025_06_24-12_11_07_fast_livo #rosbag2_2025_04_08-21_29_56 #rosbag2_2025_04_08-21_33_17 #demo_iphone_3 #ic4_loop #room0 #scene0518_00 #office0 # scene0011_00
   dataset_path: /mnt/disk1/hovsg/HMA/data/D-robotics/3f-0901
-  graph_path: /home/unitree/agentic_robot_system/inside_docker_install/sem_map/graph_20251013001655
-  save_path:  /home/unitree/agentic_robot_system/inside_docker_install/G1NavCode-Ros2Version/sem_nav
+  graph_path: /home/unitree/ROS2/Map/D-robotics-1127/graph
+  save_path:  /home/unitree/ROS2/G1_Nav_Ctr
   # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph(best)
   # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_ovseg/horizon/rosbag2_2025_08_07-17_31_57/graph
   # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_mergenew/horizon/rosbag2_2025_08_07-17_31_57/graph
@@ -37,6 +37,6 @@ main:
 models:
   clip:
     type: ViT-L/14 #ViT-B-32 #ViT-H-14 #ViT-H-14 # ViT-L/14@336px # ViT-H-14
-    checkpoint: /home/unitree/agentic_robot_system/inside_docker_install/open_clip_pytorch_model.bin 
+    checkpoint: /home/unitree/ROS2/checkpoints/open_clip_pytorch_model.bin 
     # checkpoint: checkpoints/ovseg_clip.pth
     # checkpoint: checkpoints/laion2b_s32b_b79k.bin # checkpoints/ovseg_clipl14_9a1909.pth checkpoints/laion2b_s32b_b79k.bin

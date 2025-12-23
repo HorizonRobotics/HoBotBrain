@@ -25,6 +25,7 @@ class RGBDDataset(Dataset, ABC):
         """
         self.root_dir = cfg["root_dir"]
         self.transforms = cfg["transforms"]
+        self.depth_cut = cfg["depth_cut"]
         self.rgb_intrinsics = None
         self.depth_intrinsics = None
         self.scale = None

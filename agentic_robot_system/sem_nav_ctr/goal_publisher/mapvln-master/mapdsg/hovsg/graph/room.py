@@ -11,7 +11,7 @@ import numpy as np
 import open3d as o3d
 
 from hovsg.utils.clip_utils import get_img_feats, get_text_feats_multiple_templates
-from hovsg.utils.graph_utils import find_overlapping_ratio_faiss
+from hovsg.utils.graph_utils import find_overlapping_ratio_faiss, feats_denoise_dbscan
 
 
 
@@ -39,6 +39,7 @@ class Room:
         self.clip_embeddings = [] #  all images clip embeddings inside the room
         self.object_counter = 0
         self.room_center_pos = [0, 0, 0]  # x,y,z of the room center
+        self.views = []  # List of views inside the room
 
     def add_object(self, objectt):
         """
@@ -46,6 +47,13 @@ class Room:
         :param objectt: Object object to be added to the room
         """
         self.objects.append(objectt)  # Method to add objects to the room
+
+    def add_view(self, viewv):
+        """
+        Method to add views to the room
+        :param viewv: View object to be added to the room
+        """
+        self.views.append(viewv) 
 
     def set_txt_embeddings(self, text, clip_model, clip_feat_dim):
         self.embeddings.append(get_text_feats_multiple_templates(text, clip_model=clip_model, clip_feat_dim=clip_feat_dim))
@@ -184,7 +192,9 @@ class Room:
             "name" : 根据房间内的物体列表的name，推断房间类型
             "llm" : 利用LLM比较room_text和和default_room_types文本的相似度，推断房间类型
         """
-        from llm.llm_utils import infer_room_type_from_object_list_chat
+        import sys
+        sys.path.append("/mnt/disk2/hovsg/HOV-SG/hovsg/utils")
+        from llm_utils import infer_room_type_from_object_list_chat
 
         #### use similarity of object text feature and room text feature
         if infer_method == "llm":
@@ -244,7 +254,9 @@ class Room:
             "label" : 根据房间内的物体列表的name，推断房间类型
             "obj_embedding" : 根据房间内的物体列表的embedding，推断房间类型
         """
-        from llm.llm_utils import infer_room_type_from_object_list_chat
+        import sys
+        sys.path.append("/mnt/disk2/hovsg/HOV-SG/hovsg/utils")
+        from llm_utils import infer_room_type_from_object_list_chat
 
         #### use similarity of object text feature and room text feature
         if infer_method == "label":
@@ -278,11 +290,11 @@ class Room:
 
             represent_feat = feats_denoise_dbscan(object_embs).reshape((1, -1))
             text_feats = get_text_feats_multiple_templates(default_room_types, clip_model, clip_feat_dim)
-            sim_mat = compute_similarity(represent_feat, text_feats)
+            sim_mat = np.dot(represent_feat, text_feats.T)
+            # sim_mat = compute_similarity(represent_feat, text_feats)
             col_id = np.argmax(sim_mat)
             self.name = default_room_types[col_id]
         print("room_id, name: ", self.room_id, self.name)
-
 
     def save(self, path):
         """
@@ -297,6 +309,7 @@ class Room:
             "name": self.name,
             "floor_id": self.floor_id,
             "objects": [obj.object_id for obj in self.objects],
+            "views": [v.view_id for v in self.views],
             "vertices": self.vertices.tolist(),
             "room_height": self.room_height,
             "room_zero_level": self.room_zero_level,
@@ -327,6 +340,27 @@ class Room:
             self.represent_images = metadata["represent_images"],
             self.sample_images = metadata["sample_images"]
             self.clip_embeddings = [np.asarray(i) for i in metadata["clip_embeddings"]]
+    
+    def load_new(self, path):
+        """
+        Load the room from folder as ply for the point cloud
+        and json for the metadata
+        """
+        # load the point cloud
+        self.pcd = o3d.io.read_point_cloud(os.path.join(path, str(self.room_id) + ".ply"))
+        # load the metadata
+        with open(path + "/" + str(self.room_id) + ".json") as json_file:
+            metadata = json.load(json_file)
+            self.name = metadata["name"]
+            self.floor_id = metadata["floor_id"]
+            self.vertices = np.asarray(metadata["vertices"])
+            self.room_height = metadata["room_height"]
+            self.room_zero_level = metadata["room_zero_level"]
+            self.embeddings = [np.asarray(i) for i in metadata["embeddings"]]
+            self.represent_images = metadata["represent_images"],
+            self.sample_images = metadata["sample_images"]
+            self.clip_embeddings = [np.asarray(i) for i in metadata["clip_embeddings"]]
+            self.views = metadata["views"]
 
     def __str__(self):
-        return f"Room ID: {self.room_id}, Name: {self.name}, Floor ID: {self.floor_id}, Objects: {len(self.objects)}"
+        return f"Room ID: {self.room_id}, Name: {self.name}, Floor ID: {self.floor_id}, Objects: {len(self.objects)}, Views: {len(self.views)}"

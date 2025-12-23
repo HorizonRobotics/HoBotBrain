@@ -20,6 +20,125 @@ from torchmetrics.functional import pairwise_cosine_similarity
 from tqdm import tqdm
 
 import open3d as o3d
+import numpy as np
+
+
+def visualize_pcd_on_image(obj_pcd, img, camera_matrix, pose, save_path, color=(0, 0, 255)):
+    """
+    将 3D 点云投影到 2D 图像并保存可视化结果，同时返回物体的平均距离
+
+    Args:
+        obj_pcd: Open3D PointCloud 对象 (物体点云)
+        img: numpy.ndarray (H, W, 3)，原始图像
+        camera_matrix: numpy.ndarray (3, 3)，相机内参矩阵
+        pose: numpy.ndarray (4, 4)，相机位姿矩阵 (世界到相机的变换)
+        save_path: str，保存路径
+        color: tuple(B, G, R)，绘制点的颜色
+
+    Returns:
+        avg_distance: float，物体在相机坐标系下的平均距离（米）
+    """
+    # 取出点云坐标 (N, 3)
+    pts = np.asarray(obj_pcd.points)  # 世界坐标系下点云
+    if pts.shape[0] == 0:
+        print("Warning: Empty point cloud provided.")
+        return None
+
+    # 转换到齐次坐标 (N, 4)
+    pts_h = np.hstack((pts, np.ones((pts.shape[0], 1))))
+
+    # 世界坐标系 -> 相机坐标系
+    pts_cam = (pose @ pts_h.T).T[:, :3]  # (N, 3)
+
+    # 过滤掉 Z<=0 的点（在相机后方）
+    valid_mask = pts_cam[:, 2] > 0
+    pts_cam = pts_cam[valid_mask]
+
+    if pts_cam.shape[0] == 0:
+        print("Warning: No valid points in front of camera.")
+        return None
+
+    # 计算平均距离（Z 方向）
+    avg_distance = float(np.mean(pts_cam[:, 2]))
+
+    # 相机坐标系 -> 像素坐标
+    uv = (camera_matrix @ pts_cam.T).T  # (N, 3)
+    uv = uv[:, :2] / uv[:, 2:]  # 除以 z 得到像素坐标
+
+    # 拷贝一份图像用于绘制
+    img_vis = img.copy()
+
+    # 遍历绘制点
+    for (u, v) in uv.astype(int):
+        if 0 <= u < img_vis.shape[1] and 0 <= v < img_vis.shape[0]:
+            cv2.circle(img_vis, (u, v), 2, color, -1)
+
+    # 保存结果
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    cv2.imwrite(save_path, img_vis)
+    # cv2.imshow("Projected PCD on Image", img_vis)
+    # cv2.waitKey(10)
+    print(f"Projected PCD visualization saved at {save_path}, avg_distance = {avg_distance:.3f}m")
+
+    return avg_distance
+
+
+def check_object_in_view(img_w, img_h, camera_matrix, cam_pose_inv, obj_points, 
+                         min_visible_ratio=0.5, max_depth=10.0, return_depth=False):
+    """
+    检查物体点云是否在相机的视野范围内，并且平均深度小于 max_depth
+
+    Args:
+        img_w (int): 图像宽度 (像素)
+        img_h (int): 图像高度 (像素)
+        camera_matrix (numpy.ndarray): 内参矩阵 (3x3)
+        cam_pose_inv (numpy.ndarray): 世界到相机的变换矩阵 (4x4)
+        obj_points (numpy.ndarray): 物体点云 (N x 3)
+        min_visible_ratio (float): 至少多少比例的点可见才算在视野中
+        max_depth (float): 平均深度阈值 (米)
+
+    Returns:
+        bool: True 如果物体在视野中且平均深度小于 max_depth, 否则 False
+    """
+
+    if obj_points.shape[0] == 0:
+        return (False, np.inf) if return_depth else False
+
+    # ---- 1. 世界 -> 相机坐标 ----
+    ones = np.ones((obj_points.shape[0], 1))
+    obj_points_h = np.hstack([obj_points, ones])  # (N,4)
+    obj_points_cam = (cam_pose_inv @ obj_points_h.T).T[:, :3]  # (N,3)
+
+    # ---- 2. 只保留相机前方的点 ----
+    obj_points_cam = obj_points_cam[obj_points_cam[:, 2] > 0]
+    if obj_points_cam.shape[0] == 0:
+        return (False, np.inf) if return_depth else False
+
+
+    # ---- 3. 投影到图像坐标 ----
+    pixels_h = (camera_matrix @ obj_points_cam.T).T  # (N,3)
+    pixels = pixels_h[:, :2] / pixels_h[:, 2:3]  # (u,v)
+
+    # ---- 4. 判断是否落在图像范围内 ----
+    inside_mask = (
+        (pixels[:, 0] >= 0) & (pixels[:, 0] < img_w) &
+        (pixels[:, 1] >= 0) & (pixels[:, 1] < img_h)
+    )
+
+    if not np.any(inside_mask):
+        return (False, np.inf) if return_depth else False
+
+    visible_ratio = np.sum(inside_mask) / obj_points.shape[0]
+
+    if visible_ratio < min_visible_ratio:
+        return (False, np.inf) if return_depth else False
+
+    # ---- 5. 深度约束 ----
+    mean_depth = np.mean(obj_points_cam[inside_mask, 2]) if np.any(inside_mask) else np.inf
+    if mean_depth > max_depth:
+        return (False, mean_depth) if return_depth else False
+
+    return (True, mean_depth) if return_depth else True        
 
 
 def find_intersection_share(map_points, obj_points, radius=0.05):
@@ -286,6 +405,7 @@ def distance_transform(occupancy_map, reselotion, tmp_path):
 
     # Create the marker image for the watershed algorithm
     markers = np.zeros(dist.shape, dtype=np.int32)
+
     # Draw the foreground markers
     for i in range(len(contours)):
         cv2.drawContours(markers, contours, i, (i + 1), -1)
@@ -299,16 +419,15 @@ def distance_transform(occupancy_map, reselotion, tmp_path):
     
     # find the vertices of each room
     room_vertices = []
+    # for i in range(len(contours)):
+    #     room_vertices.append(np.where(markers == i + 1))
+    # room_vertices = np.array(room_vertices, dtype=object).squeeze()
     for i in range(len(contours)):
-        room_vertices.append(np.where(markers == i + 1))
-    room_vertices = np.array(room_vertices, dtype=object).squeeze()
-    print("room_vertices shape: ", room_vertices.shape)
-    for room in room_vertices:
-        print("room shape is ", room.shape)
+        room_vertices.append(tuple(np.where(markers == i + 1)))  # 每个元素是 (rows, cols)
     
     plt.figure()
     plt.imshow(markers, cmap="jet", origin="lower")
-    # 在每个房间区域中心写上编号
+    # # 在每个房间区域中心写上编号
     for i, room in enumerate(room_vertices):
         if len(room[0]) == 0:
             continue
@@ -319,6 +438,88 @@ def distance_transform(occupancy_map, reselotion, tmp_path):
     plt.savefig(os.path.join(tmp_path, "markers.png"))
 
     return room_vertices
+
+
+# def distance_transform(occupancy_map, reselotion, tmp_path):
+#     """
+#         Perform distance transform on the occupancy map to find the distance of each cell to the nearest occupied cell.
+#         :param occupancy_map: 2D numpy array representing the occupancy map.
+#         :param reselotion: The resolution of each cell in the grid map in meters.
+#         :param path: The path to save the distance transform image.
+#         :return: The distance transform of the occupancy map.
+#     """
+
+#     print("occupancy_map shape: ", occupancy_map.shape)
+#     bw = occupancy_map.copy()
+#     full_map = occupancy_map.copy()
+
+#     # invert the image
+#     bw = cv2.bitwise_not(bw)
+
+#     # Perform the distance transform algorithm
+#     bw = np.uint8(bw)
+#     dist = cv2.distanceTransform(bw, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
+#     print("range of dist: ", np.min(dist), np.max(dist))
+#     # so we can visualize and threshold it
+#     cv2.normalize(dist, dist, 0, 255, cv2.NORM_MINMAX)
+#     plt.figure()
+#     plt.imshow(dist, cmap="jet", origin="lower")
+#     plt.savefig(os.path.join(tmp_path, "dist.png"))
+
+#     dist = np.uint8(dist)
+#     # apply Otsu's thresholding after Gaussian filtering
+#     blur = cv2.GaussianBlur(dist, (11, 1), 10)
+#     plt.figure()
+#     plt.imshow(blur, cmap="jet", origin="lower")
+#     plt.savefig(os.path.join(tmp_path, "dist_blur.png"))
+#     _, dist = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#     plt.figure()
+#     plt.imshow(dist, cmap="jet", origin="lower")
+#     plt.savefig(os.path.join(tmp_path, "dist_thresh.png"))
+
+#     # Create the CV_8U version of the distance image
+#     # It is needed for findContours()
+#     dist_8u = dist.astype("uint8")
+#     # Find total markers
+#     contours, _ = cv2.findContours(dist_8u, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#     print("number of seeds, aka rooms: ", len(contours))
+
+#     # print the area of each seed
+#     for i in range(len(contours)):
+#         print("area of seed {}: ".format(i), cv2.contourArea(contours[i]))
+
+#     # remove small seed contours
+#     min_area_m = 0.5
+#     min_area = (min_area_m / reselotion) ** 2
+#     print("min_area: ", min_area)
+#     contours = [c for c in contours if cv2.contourArea(c) > min_area]
+#     print("number of contours after remove small seeds: ", len(contours))
+
+#     # Create the marker image for the watershed algorithm
+#     markers = np.zeros(dist.shape, dtype=np.int32)
+#     # Draw the foreground markers
+#     for i in range(len(contours)):
+#         cv2.drawContours(markers, contours, i, (i + 1), -1)
+#     # Draw the background marker
+#     circle_radius = 1  # in pixels
+#     cv2.circle(markers, (3, 3), circle_radius, len(contours) + 1, -1)
+
+#     # Perform the watershed algorithm
+#     full_map = cv2.cvtColor(full_map, cv2.COLOR_GRAY2BGR)
+#     cv2.watershed(full_map, markers)
+
+#     plt.figure()
+#     plt.imshow(markers, cmap="jet", origin="lower")
+#     plt.savefig(os.path.join(tmp_path, "markers.png"))
+
+#     # find the vertices of each room
+#     room_vertices = []
+#     for i in range(len(contours)):
+#         room_vertices.append(np.where(markers == i + 1))
+#     room_vertices = np.array(room_vertices, dtype=object).squeeze()
+#     print("room_vertices shape: ", room_vertices.shape)
+
+#     return room_vertices
 
 
 def compute_iou_batch(bbox1: torch.Tensor, bbox2: torch.Tensor) -> torch.Tensor:
@@ -382,8 +583,8 @@ def find_overlapping_ratio_faiss(pcd1, pcd2, radius=0.02):
         return 0
 
     # Create the FAISS index for each point cloud
-    index1 = 0 #faiss.IndexFlatL2(pcd1.shape[1])
-    index2 = 0 #faiss.IndexFlatL2(pcd2.shape[1])
+    index1 = faiss.IndexFlatL2(pcd1.shape[1])
+    index2 = faiss.IndexFlatL2(pcd2.shape[1])
     index1.add(pcd1.astype(np.float32))
     index2.add(pcd2.astype(np.float32))
 

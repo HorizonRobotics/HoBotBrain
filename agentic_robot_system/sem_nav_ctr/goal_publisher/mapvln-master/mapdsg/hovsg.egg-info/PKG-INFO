@@ -1,5 +1,7 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: hovsg
 Version: 1.0.0
 Summary: HOV-SG: Hierarchical Open-Vocabulary 3D Scene Graphs for Language-Grounded Robot Navigation
 Author: See https://hovsg.github.io/
+Dynamic: author
+Dynamic: summary

@@ -24,6 +24,8 @@ class Object:
         self.room_id = room_id  # Identifier of the room this object belongs to
         self.name = name  # Name of the object (e.g., "Chair", "Table")
         self.gt_name = None
+        self.best_view_id = None # best view id for the object
+        self.view_ids = [] # view id the object belongs to
 
     def set_vertices(self, vertices):
         """
@@ -46,6 +48,8 @@ class Object:
             "room_id": self.room_id,
             "name": self.name,
             "embedding": self.embedding.tolist() if self.embedding is not None else "",
+            "view_ids": self.view_ids,
+            "best_view_id": self.best_view_id,
         }
         with open(os.path.join(path, str(self.object_id) + ".json"), "w") as outfile:
             json.dump(metadata, outfile)
@@ -64,6 +68,25 @@ class Object:
             self.room_id = metadata["room_id"]
             self.name = metadata["name"]
             self.embedding = np.asarray(metadata["embedding"]) if metadata["embedding"] != "" else None
+            # self.view_ids = metadata["view_ids"]
+            # self.best_view_id = metadata["best_view_id"]
+    
+    def load_new(self, path):
+        """
+        Load the object from folder as ply for the point cloud
+        and json for the metadata
+        """
+        # load the point cloud
+        self.pcd = o3d.io.read_point_cloud(os.path.join(path, str(self.object_id) + ".ply"))
+        # load the metadata
+        with open(path + "/" + str(self.object_id) + ".json") as json_file:
+            metadata = json.load(json_file)
+            self.vertices = np.asarray(metadata["vertices"])
+            self.room_id = metadata["room_id"]
+            self.name = metadata["name"]
+            self.embedding = np.asarray(metadata["embedding"]) if metadata["embedding"] != "" else None
+            self.view_ids = metadata["view_ids"]
+            self.best_view_id = metadata["best_view_id"]
 
     def __add__(self, other):
         """

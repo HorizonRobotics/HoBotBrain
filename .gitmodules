@@ -1,0 +1,3 @@
+[submodule "agentic_robot_system/humble_localization_nav2/rpg_vikit-ros2"]
+	path = agentic_robot_system/humble_localization_nav2/rpg_vikit-ros2
+	url = git@github.com:zhaoyu199201/rpg_vikit-ros2.git

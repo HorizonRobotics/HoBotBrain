@@ -6,6 +6,10 @@ from typing import Dict, List, Tuple, Union
 import openai
 from openai import AzureOpenAI, OpenAI
 
+
+from openai import AzureOpenAI
+
+
 def infer_floor_id_from_query(floor_ids: List[int], query: str) -> int:
     """return the floor id from the floor_ids_list that match with the query
 
@@ -60,11 +64,11 @@ def infer_room_type_from_object_list_chat(
     # openai.api_key = openai_key
     # client = openai.OpenAI(api_key=openai_key)
 
-
     azure_endpoint="xxxx"
     azure_api_key="xxxx"
     azure_api_version="xxxx"
     gpt_model="xxxx"
+
     client = AzureOpenAI(
         azure_endpoint=azure_endpoint,
         api_key=azure_api_key,
@@ -81,7 +85,7 @@ def infer_room_type_from_object_list_chat(
         )
 
     objects = ", ".join(object_list)
-    print(f"Objects list: {objects}")
+    # print(f"Objects list: {objects}")
     print(f"Room types: {room_types}")
 
     question = f"""
@@ -324,13 +328,15 @@ def parse_hier_query_use_prompt_insentence_parse(params, instruction: str) -> Tu
 
     # Depending on the query spec, parse the query differently:
     if set(params.main.long_query.spec) == {"obj", "room", "floor"}:
-        system_prompt = "你是一个名为地瓜的查询解析器。你需要忽略句子中的所有“地瓜”字样。你的任务是将一句话解析为楼层、房间和物体，如果只能解析出房间或者物体，请将另一个字段置为空, 物体的描述必须是英文，楼层和房间为中文。"
+        system_prompt = "你是一个查询解析器。你的任务是将一句话解析为楼层、房间和物体，如果只能解析出房间或者物体，请将另一个字段置为空, 物体的描述必须是英文，楼层和房间为中文。"
+        # system_prompt = "你是一个名为地瓜的查询解析器。你需要忽略句子中的所有“地瓜”字样。你的任务是将一句话解析为楼层、房间和物体，如果只能解析出房间或者物体，请将另一个字段置为空, 物体的描述必须是英文，楼层和房间为中文。"
+
         prompt = f"请解析以下句子：{instruction}"
-        prompt += "输出格式要求：用逗号分隔的列表，依次为楼层、房间和物体。例如：[楼层1, 地平线展厅, sofa]"
+        prompt += "输出格式要求：用逗号分隔的列表，依次为楼层、房间和物体。例如：[楼层1, 地瓜办公区, sofa]"
     elif set(params.main.long_query.spec) == {"obj", "room"}:
         system_prompt = "你是一个名为地瓜的查询解析器。你的任务是将一句话解析为房间和物体。"
         prompt = f"请解析以下句子：{instruction}"
-        prompt += "输出格式要求：用逗号分隔的列表，依次为房间和物体。例如：[客厅, 沙发]"
+        prompt += "输出格式要求：用逗号分隔的列表，依次为房间和物体。例如：[地平线展厅, 沙发]"
     elif set(params.main.long_query.spec) == {"obj", "floor"}:
         system_prompt = "你是一个名为地瓜的查询解析器。你的任务是将一句话解析为楼层和物体。"
         prompt = f"请解析以下句子：{instruction}"
@@ -353,6 +359,90 @@ def parse_hier_query_use_prompt_insentence_parse(params, instruction: str) -> Tu
     raw_result = response.choices[0].message.content.strip().rstrip("]").lstrip("[")
     print("raw_result:", raw_result)
     # import pdb; pdb.set_trace()
+    # Split safely
+    spec = set(params.main.long_query.spec)
+    parts = [x.strip() for x in raw_result.split(",")]
+    # Ensure always 3 elements
+    floor, room, obj = None, None, None
+    try:
+        if spec == {"obj", "room", "floor"}:
+            floor, room, obj = (parts + [None]*3)[:3]
+        elif spec == {"obj", "room"}:
+            room, obj = (parts + [None]*2)[:2]
+        elif spec == {"obj", "floor"}:
+            floor, obj = (parts + [None]*2)[:2]
+    except Exception as e:
+        print(f"Warning: failed to parse LLM result: {raw_result}, error: {e}")
+        floor, room, obj = None, None, instruction.strip()
+
+    print("floor, room, object:", floor, room, obj)
+    return (floor, room, obj)
+
+
+def parse_hier_query_use_prompt_insentence_parse_icra(params, instruction: str) -> Tuple[str, str, str]:
+    """
+    Parse long language query into a list of short queries at floor, room, and object level
+    Example: "mirror in region bathroom on floor 0" -> ("floor 0", "bathroom", "mirror")
+    """
+
+    azure_endpoint="xxxx"
+    azure_api_key="xxxx"
+    azure_api_version="xxxx"
+    gpt_model="xxxx"
+
+    client = AzureOpenAI(
+        azure_endpoint=azure_endpoint,
+        api_key=azure_api_key,
+        api_version=azure_api_version,
+        )
+
+    # Depending on the query spec, parse the query differently:
+    if set(params.main.long_query.spec) == {"obj", "room", "floor"}:
+        system_prompt = "You are a query parser. Your task is to parse a sentence into floor, room, and object. If only room or object can be parsed, leave the other field empty. All descriptions except object must be in English."
+        prompt = f"Please parse the following sentence: {instruction}"
+        prompt += "Output format requirement: a list separated by commas, in the order of floor, room, and object. For example: [Floor 1, Horizon Exhibition Hall, sofa]"
+    elif set(params.main.long_query.spec) == {"obj", "room"}:
+        system_prompt = "You are a query parser named Diguo. Your task is to parse a sentence into room and object."
+        prompt = f"Please parse the following sentence: {instruction}"
+        prompt += "Output format requirement: a list separated by commas, in the order of room and object. For example: [Living Room, Sofa]"
+    elif set(params.main.long_query.spec) == {"obj", "floor"}:
+        system_prompt = "You are a query parser named Diguo. Your task is to parse a sentence into floor and object."
+        prompt = f"Please parse the following sentence: {instruction}"
+        prompt += "Output format requirement: a list separated by commas, in the order of floor and object. For example: [Floor 1, Sofa]"
+    elif set(params.main.long_query.spec) == {"obj"}:
+        # return directly and not use the LLM for parsing
+        print("floor, room, object:", None, None, instruction)
+        return [None, None, instruction.strip()]
+
+    # if set(params.main.long_query.spec) == {"obj", "room", "floor"}:
+    #     system_prompt = "你是一个查询解析器。你的任务是将一句话解析为楼层、房间和物体，如果只能解析出房间或者物体，请将另一个字段置为空, 所有的描述必须是英文。"
+    #     prompt = f"请解析以下句子：{instruction}"
+    #     prompt += "输出格式要求：用逗号分隔的列表，依次为楼层、房间和物体。例如：[楼层1, 地平线展厅, sofa]"
+    # elif set(params.main.long_query.spec) == {"obj", "room"}:
+    #     system_prompt = "你是一个名为地瓜的查询解析器。你的任务是将一句话解析为房间和物体。"
+    #     prompt = f"请解析以下句子：{instruction}"
+    #     prompt += "输出格式要求：用逗号分隔的列表，依次为房间和物体。例如：[客厅, 沙发]"
+    # elif set(params.main.long_query.spec) == {"obj", "floor"}:
+    #     system_prompt = "你是一个名为地瓜的查询解析器。你的任务是将一句话解析为楼层和物体。"
+    #     prompt = f"请解析以下句子：{instruction}"
+    #     prompt += "输出格式要求：用逗号分隔的列表，依次为楼层和物体。例如：[楼层1, 沙发]"
+    # elif set(params.main.long_query.spec) == {"obj"}:
+    #     # return directly and not use the LLM for parsing
+    #     print("floor, room, object:", None, None, instruction)
+    #     return [None, None, instruction.strip()]
+
+    conversation = Conversation(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ]
+    )
+
+    response = send_query(
+        client, messages=conversation.messages, model=gpt_model, temperature=0.0
+    )
+    raw_result = response.choices[0].message.content.strip().rstrip("]").lstrip("[")
+    print("raw_result:", raw_result)
     # Split safely
     spec = set(params.main.long_query.spec)
     parts = [x.strip() for x in raw_result.split(",")]

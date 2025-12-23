@@ -5,14 +5,14 @@ channels:
 dependencies:
   - python=3.8
   - numpy
-    #- pytorch::faiss-gpu
+  - pytorch::faiss-gpu
   - pip
   - pip:
     - matplotlib==3.7.3
     - scipy
     - open3d==0.18.0
     - opencv-python
-      #    - git+https://github.com/facebookresearch/segment-anything.git
+    - git+https://github.com/facebookresearch/segment-anything.git
     - torchmetrics
     - ftfy
     - tqdm

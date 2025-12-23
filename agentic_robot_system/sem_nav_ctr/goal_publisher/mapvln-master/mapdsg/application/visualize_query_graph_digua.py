@@ -7,33 +7,10 @@ from omegaconf import DictConfig
 import time
 import numpy as np
 import os
+import json
+
 # pylint: disable=all
 
-# 🏢 一、单层常见房间类型
-    # Office / Workspace —— 办公室/工作区
-    # Private office -- 单人办公室
-    # Open-plan office / Open workspace 开放式工位区
-    # Meeting Room / Conference Room —— 会议室
-    # Small meeting room / Huddle room 小会议室
-    # Large conference hall / Multipurpose room -- 大会议室 / 多功能厅
-    # Break Room / Pantry / Kitchenette —— 茶水间 / 小厨房
-    # Restroom / Toilet / Washroom —— 卫生间
-    # Storage / Utility Room —— 储藏间 / 设备间
-    # Server Room / IT Room / Data Center —— 机房 / 数据中心
-    # Reception Area —— 接待区
-
-# 🏢 二、跨楼层或公共区域
-    # Lobby / Entrance Hall —— 大堂 / 入口大厅
-    # Atrium —— 中庭（通常是多层贯通的挑空空间，有玻璃顶采光）
-    # Corridor / Hallway —— 走廊 / 过道
-    # Stairwell —— 楼梯间
-    # Elevator Lobby —— 电梯厅
-    # Mechanical / Service Floor —— 机电层（跨楼层设置，空调、水电管道等）
-    # Auditorium —— 报告厅 / 大型会议厅（可能跨层）
-    # Cafeteria / Dining Hall —— 餐厅 / 员工食堂（常跨层挑高）
-    # Gym / Fitness Center —— 健身房（部分高档办公楼会有）
-
-'''
 def visualize_and_save(room_pcd, obj_pcd, end_sphere, save_path="scene.png"):
     vis = o3d.visualization.Visualizer()
     vis.create_window(visible=True)  # 设置 False 可后台渲染
@@ -67,77 +44,195 @@ def visualize_and_save(room_pcd, obj_pcd, end_sphere, save_path="scene.png"):
     vis.capture_screen_image(save_path)
     vis.destroy_window()
     print(f"Saved visualization to {save_path}")
-'''
-@hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_demo")
+
+instruction_templelate_ic3f_demo = [ # 27
+    
+    # 4 west mixed-use space
+    # "white table with dark legs in the hallway",
+    # "green chairs with a simple design in the hallway",
+    "带我去地瓜电梯间找盆栽",
+    "带我去地瓜电梯间找电视",
+    
+    # #0 west pantry
+    "带我去地瓜接待区找瓶水",
+    "带我去地瓜接待区找椅子",
+    "带我去地瓜接待区找纸杯",
+
+    # # 8 east mixed-use space
+    "展厅找J6芯片",
+      
+    # #3/5 cafeteria
+    "展厅找镜子",
+    "展厅找把椅子",
+    "展厅找百事可乐",
+    "展厅找可口可乐"
+]
+
+@hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_icra_ic3f_diguademo") # obj-embedding
+# @hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_icra_ic4f") # label, obj-embedding
+# @hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_icra_sh3f") #label, obj-embedding, view-embedding
+# @hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_icra_ic7f_demo")
+# @hydra.main(version_base=None, config_path="../config", config_name="visualize_query_graph_1014_demo")
 def main(params: DictConfig):
     # Load graph
-    #scene_id = params.main.scene_id
+    scene_id = params.main.scene_id
     use_gpt = params.main.use_gpt
     # params.main.scene_id = scene_id
     # Create save directory
-    #params.main.dataset_path = os.path.join(params.main.dataset_path, scene_id) # params.main.scene_id
-    #save_dir = os.path.join(params.main.save_path, params.main.dataset, scene_id) # params.main.scene_id
-    #params.main.save_path = save_dir
-    #if not os.path.exists(save_dir):
-    #    os.makedirs(save_dir, exist_ok=True)
-    #print("dataset_path: ", params.main.dataset_path)
-    #print("save_path: ", save_dir)
+    params.main.dataset_path = os.path.join(params.main.dataset_path, scene_id) # params.main.scene_id
+    save_dir = os.path.join(params.main.save_path, params.main.dataset, scene_id) # params.main.scene_id
+    params.main.save_path = save_dir
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+    print("dataset_path: ", params.main.dataset_path)
+    print("save_path: ", save_dir)
 
     hovsg = Graph(params)
-    hovsg.load_graph(params.main.graph_path)
-    
+    hovsg.load_graph_new(params.main.graph_path)
     # 自主判断房间类型和名字
     hovsg.generate_room_names(
             generate_method="view_embedding",
-            # generate_method="label",
-            # generate_method="obj_embedding",
-            # digua_demo room_types 0807
+            # digua_demo room_types
             default_room_types=[                
                 "Hallway",                               
-                # "Exhibition Hall",
-                "Office Pantry",
+                "Reception area",
+                "Exhibition Hall",
+                "Pantry",
+                "Corner Hallway",
                 "Elevator Lobby",                
-                # "Lift",
+                "Lift",
                 "Office",
-                # "Office-Pantry",
-                # "none",
-                "Cafeteria", 
-                # "Reception Area",
+                "Cafeteria",             
             ]
     )
-    designated_room_names_ic7f_demo = [      
+    # 人为设定房间类型和名字
+    # designated_room_names = [        
+    #     "厕所",         
+    #     "地平线展厅",        
+    #     "长走廊",
+    #     "地瓜电梯间",]    
+
+    designated_room_names_digua = [        
         "none", 
+        "地平线走廊",
+        "地平线展厅",
         "none",
-        "办公区",
-        "餐厅",
-        "电梯间走廊",
-        "茶水间",
-        "办公休息区",
+        "转角走廊",
+        # "转角走廊",
+        "长走廊",
+        "地瓜电梯间",]
+    designated_room_names_ic3f = [      
+        "none", #Exhibition Hall",
+        "none",
+        "Exhibition Hall",  
+        "none", 
+        "Corner Hallway",
+        "HallWay",
+        "Elevator Lobby Reception Area",
     ]
-    hovsg.set_room_names(room_names=designated_room_names_ic7f_demo)
+    designated_room_names_ic3f_demo = [      
+        "none", #Exhibition Hall",
+        "none",
+        "展厅",  
+        "none", 
+        "转角走廊",
+        "走廊",
+        "地瓜电梯间接待区",
+    ]
+    designated_room_names_ic4f = [      
+        "pantry", #Exhibition Hall",
+        "office",
+        "Hallway",
+    ]
+    designated_room_names_sh3f = [      
+        "office pantry", #Exhibition Hall",
+        "office pantry",
+        "office",
+    ]
+    designated_room_names_ic7f = [      
+        "west pantry", 
+        "hallway",
+        "hallway",
+        "cafeteria",
+        "west mixed-use space",
+        "cafeteria",
+        "elevator lobby",
+        "hallyway office",
+        "east mixed-use space",        
+    ]
+    designated_room_names_1014demo = [      
+        "转角走廊",
+        "none",
+        "长走廊",
+        "地平线展厅", 
+        "none", 
+        "none", 
+        "长走廊",
+        "接待区",
+        "none",
+        "地瓜办公区电梯间",]
+    hovsg.set_room_names(room_names=designated_room_names_ic3f_demo)
+    # hovsg.set_room_names(room_names=designated_room_names_1014demo)
     # import pdb; pdb.set_trace()
     
     T_switch_axis = np.array([[1,0,0,0],[0,0,1,0],[0,-1,0,0],[0,0,0,1]], dtype=np.float64) # map to dsg
     T_tomap = np.linalg.inv(T_switch_axis) # dsg to map
+    json_save_path = os.path.join(hovsg.vln_result_dir, "all_results.json")
+    all_results = []  # 存放每条 query 的结果
     # print("T_tomap: ", T_tomap)
     # loop forever and ask for query, until user click 'q'
     while True:
         query_instruction = input("Enter query: ")
         if query_instruction == "q":
             break
-        # query_instruction = "Find me a plants in the 地平线展厅"
+        # query_instruction = "带我在展厅找芯片RDK"
         print(query_instruction)
         hovsg.curr_query_save_dir = os.path.join(hovsg.vln_result_dir, query_instruction)
         if not os.path.exists(hovsg.curr_query_save_dir):
             os.makedirs(hovsg.curr_query_save_dir)
 
         start_time = time.time()
-        ans = ''
-        floor, room, obj = hovsg.query_hierarchy_protected(query_instruction, ans, top_k=1, use_gpt=use_gpt)
+        floor, room, obj, res_dict = hovsg.query_hierarchy_protected(query_instruction, top_k=5, use_gpt=False)
         end_time = time.time()
-        print(f"运行时间: {end_time - start_time:.4f} 秒")
+        query_time = end_time - start_time
+        print(f"运行时间: {query_time:.4f} 秒")
+
+        # save log for debug
+        # 构建要写入 JSON 的数据
+        query_result = {
+            "query": query_instruction,
+            "room_query": res_dict["room_query"],
+            "object_query": res_dict["object_query"],
+            "time_seconds": query_time,
+            "floor_id": floor.floor_id,
+            "rooms": [{"room_id": r.room_id, "name": r.name} for r in room],
+            "objects": [{"object_id": o.object_id} for o in obj],
+            "objects_scores": res_dict["object_scores"]
+        }        
+
+
+        # handle the J6 芯片 badcase FOR 0901
+        if "芯片" in query_instruction or "chip" in query_instruction.lower() or "镜子" in query_instruction or "mirror" in query_instruction.lower():
+            if len(obj) > 1:
+                obj = [obj[1]]
+                # room = [room[0]]
+        else:
+            if len(obj) > 1:
+                obj = [obj[0]]
+                # room = [room[0]]
+
+        # # FOR 1014DEMO map
+        # object_query_lower = res_dict["object_query"].lower()
+        # if "chip" in object_query_lower and "dk" in object_query_lower and "rdk" not in object_query_lower:
+        #     if len(obj) > 3:
+        #         obj = [obj[2]]
+        # else:
+        #     if len(obj) > 1:
+        #         obj = [obj[0]]
+        
         # visualize the query
         print(floor.floor_id, [(r.room_id, r.name) for r in room], [o.object_id for o in obj])
+        
         # use open3d to visualize room.pcd and color the points where obj.pcd is
         print("len(obj): ", len(obj))
         for i in range(len(obj)):
@@ -151,21 +246,24 @@ def main(params: DictConfig):
             obj_center_in_map = (T_tomap @ obj_center_h)[:3]  
             print("obj_center in lidarmap: ", obj_center_in_map)
 
-            #end_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.25)
-            #end_sphere.translate(obj_center)
-            #end_sphere.paint_uniform_color([1, 0, 0])  
+            end_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+            end_sphere.translate(obj_center)
+            end_sphere.paint_uniform_color([1, 0, 0])  
             # o3d.visualization.draw_geometries([room_pcd, obj_pcd, end_sphere])
             # 合并点云
-            #mesh_pcd = end_sphere.sample_points_uniformly(number_of_points=500)
-            #combined_pcd = room_pcd + obj_pcd + mesh_pcd
+            mesh_pcd = end_sphere.sample_points_uniformly(number_of_points=500)
+            combined_pcd = room_pcd + obj_pcd + mesh_pcd
             # 保存为单个文件
-            #pcd_save_path = os.path.join(hovsg.curr_query_save_dir, f"scene_{i}.ply")
-            #pcd_render_save_path = os.path.join(hovsg.curr_query_save_dir, f"scene_{i}.png")
-            #o3d.io.write_point_cloud(pcd_save_path, combined_pcd)
-            #visualize_and_save(room_pcd, obj_pcd, end_sphere, save_path=pcd_render_save_path)
-            #print(f"Saved {pcd_save_path}")
-
-
+            pcd_save_path = os.path.join(hovsg.curr_query_save_dir, f"scene_{i}.ply")
+            pcd_render_save_path = os.path.join(hovsg.curr_query_save_dir, f"scene_{i}.png")
+            o3d.io.write_point_cloud(pcd_save_path, combined_pcd)
+            visualize_and_save(room_pcd, obj_pcd, end_sphere, save_path=pcd_render_save_path)
+            print(f"Saved {pcd_save_path}")
+        
+        all_results.append(query_result)
+    with open(json_save_path, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, ensure_ascii=False, indent=2)
+    print(f"All results saved to {json_save_path}")
 
 if __name__ == "__main__":
     main()

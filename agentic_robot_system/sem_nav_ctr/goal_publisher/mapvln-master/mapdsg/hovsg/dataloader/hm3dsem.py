@@ -34,8 +34,12 @@ class HM3DSemDataset(RGBDDataset):
         self.rgb_H = self._load_image(self.data_list[0][0]).size[1]
         self.rgb_W = self._load_image(self.data_list[0][0]).size[0]
         self.depth_intrinsics = self._load_depth_intrinsics(self.rgb_H, self.rgb_W)
+        self.camera_matrix = self.depth_intrinsics
         self.scale = 1000.0
     
+    def get_camera_intrinsics(self):
+        return self.camera_matrix
+
     def __getitem__(self, idx):
         """
         Get a data sample based on the given index.
@@ -68,6 +72,7 @@ class HM3DSemDataset(RGBDDataset):
         pose_data_list = []
         rgb_data_list = os.listdir(self.root_dir + "/rgb")
         rgb_data_list = [self.root_dir + "/rgb/" + x for x in rgb_data_list]
+        self.frameId2imgPath = rgb_data_list
         depth_data_list = os.listdir(self.root_dir + "/depth")
         depth_data_list = [self.root_dir + "/depth/" + x for x in depth_data_list]
         pose_data_list = os.listdir(self.root_dir + "/pose")

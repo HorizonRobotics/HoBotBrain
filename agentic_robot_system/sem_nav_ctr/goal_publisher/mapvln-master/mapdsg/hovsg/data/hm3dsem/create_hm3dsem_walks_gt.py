@@ -473,155 +473,181 @@ def parse_semantics(scene_dir, scene_mesh, txt_path, raw_scene_dir, dataset_dir,
     return PanopticScene(scene_dir, scene, panoptic_object_list)
 
 
+scene_ids = [
+    # "00824-Dd4bFSTQ8gi",
+    # "00829-QaLdnwvtxbs",
+    # "00843-DYehNKdT76V",
+    # "00861-GLAQ4DNUx5U",
+    # "00862-LT9Jq6dN3Ea",
+    # "00873-bxsVRursffK",
+    # "00877-4ok3usBNeis",
+    "00890-6s7QHgap2fW",
+]
+
+skip_frames_dict = dict()
+skip_frames_dict["00824-Dd4bFSTQ8gi"] = 10
+skip_frames_dict["00829-QaLdnwvtxbs"] = 10
+skip_frames_dict["00843-DYehNKdT76V"] = 10
+skip_frames_dict["00861-GLAQ4DNUx5U"] = 20
+skip_frames_dict["00862-LT9Jq6dN3Ea"] = 30
+skip_frames_dict["00873-bxsVRursffK"] = 20
+skip_frames_dict["00877-4ok3usBNeis"] = 15
+skip_frames_dict["00890-6s7QHgap2fW"] = 15
+
+
 @hydra.main(version_base=None, config_path="../../../config", config_name="create_graph")
 def main(params: DictConfig):
-    
-    dataset_dir = params.main.raw_data_path # raw HM3D dataset
-    walks_path = params.main.dataset_path # processed hm3dsem_walks dataset
-    voxel_size = params.pipeline.voxel_size
-    split = params.main.split
-    scene_dir = params.main.scene_id
-    scene_name = scene_dir.split("-")[-1]
 
-    raw_scene_dir = "{}/{}/{}/".format(dataset_dir, split, scene_dir)
-    scene_mesh = os.path.join(raw_scene_dir, scene_name + ".glb")
-    panoptics_labels_file = os.path.join(raw_scene_dir, scene_name + ".semantic.txt")
-    panoptic_scene = parse_semantics(
-        scene_dir, scene_mesh, panoptics_labels_file, raw_scene_dir, dataset_dir, scene_name
-    )
+    for scene_id in scene_ids:
+        params.main.scene_id = scene_id
+        params.dataset.hm3dsem.gt_skip_frames = skip_frames_dict[scene_id]
+        
+        dataset_dir = params.main.raw_data_path # raw HM3D dataset
+        walks_path = params.main.dataset_path # processed hm3dsem_walks dataset
+        voxel_size = params.pipeline.voxel_size
+        split = params.main.split
+        scene_dir = params.main.scene_id
+        scene_name = scene_dir.split("-")[-1]
 
-    rgb_image_path = os.path.join(walks_path, split, scene_dir, "rgb")
-    panoptic_image_path = os.path.join(walks_path, split, scene_dir, "semantic")
-    depth_image_path = os.path.join(walks_path, split, scene_dir, "depth")
-    camera_pose_file_path = os.path.join(walks_path, split, scene_dir, "pose")
+        raw_scene_dir = "{}/{}/{}/".format(dataset_dir, split, scene_dir)
+        scene_mesh = os.path.join(raw_scene_dir, scene_name + ".glb")
+        panoptics_labels_file = os.path.join(raw_scene_dir, scene_name + ".semantic.txt")
+        panoptic_scene = parse_semantics(
+            scene_dir, scene_mesh, panoptics_labels_file, raw_scene_dir, dataset_dir, scene_name
+        )
 
-    floor_labels_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Floor_Sep.csv")
+        rgb_image_path = os.path.join(walks_path, split, scene_dir, "rgb")
+        panoptic_image_path = os.path.join(walks_path, split, scene_dir, "semantic")
+        depth_image_path = os.path.join(walks_path, split, scene_dir, "depth")
+        camera_pose_file_path = os.path.join(walks_path, split, scene_dir, "pose")
 
-    region_votes_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Region_Weighted_Votes.csv")
-    region_labels_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Region_Labels.csv")
+        floor_labels_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Floor_Sep.csv")
 
-    # read rgb, depth, camera pose successively
-    all_rgb_image_files = os.listdir(rgb_image_path)
-    all_depth_image_files = os.listdir(depth_image_path)
-    all_pose_files = os.listdir(camera_pose_file_path)
+        region_votes_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Region_Weighted_Votes.csv")
+        region_labels_file_path = os.path.join(params.main.package_path, "data/hm3dsem/metadata/Per_Scene_Region_Labels.csv")
 
-    all_rgb_image_files.sort()
-    all_depth_image_files.sort()
-    all_pose_files.sort()
+        # read rgb, depth, camera pose successively
+        all_rgb_image_files = os.listdir(rgb_image_path)
+        all_depth_image_files = os.listdir(depth_image_path)
+        all_pose_files = os.listdir(camera_pose_file_path)
 
-    rgb_pcd = o3d.geometry.PointCloud()
-    panoptic_pcd = o3d.geometry.PointCloud()
-    poses = []
+        all_rgb_image_files.sort()
+        all_depth_image_files.sort()
+        all_pose_files.sort()
 
-    num_point_clouds = 0
-    for i in tqdm(range(0, len(all_rgb_image_files), params.dataset.hm3dsem.gt_skip_frames), desc="Processing frames"):
-        file_name = all_rgb_image_files[i]
-        tqdm.write(file_name)
-        rgb = cv2.imread(os.path.join(rgb_image_path, file_name))
-        rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        rgb_pcd = o3d.geometry.PointCloud()
+        panoptic_pcd = o3d.geometry.PointCloud()
+        poses = []
 
-        panoptic_ids = np.load(os.path.join(panoptic_image_path, file_name.replace("png", "npy")))
-        panoptic_rgb = np.zeros((panoptic_ids.shape[0], panoptic_ids.shape[1], 3), dtype=np.uint8)
-        for id, id_rgb in panoptic_scene.id2rgb.items():
-            panoptic_rgb[panoptic_ids == id, :] = id_rgb
-        # panoptic_image = Image.fromarray(panoptic_rgb) # as sanity check
-        # panoptic_image.save(os.path.join(walks_path, split, scene_dir, "panoptic", file_name))
-        depth = cv2.imread(os.path.join(depth_image_path, file_name), cv2.IMREAD_ANYDEPTH)
-        camera_pose = read_camera_pose_hmp3d(os.path.join(camera_pose_file_path, file_name.replace("png", "txt")))
-        poses.append(camera_pose[:3, 3])
-        frame_color_pcd = create_pcd_hmp3d(rgb, depth, camera_pose)
-        frame_panoptic_pcd = create_pcd_hmp3d(panoptic_rgb, depth, camera_pose)
-        rgb_pcd += frame_color_pcd
-        panoptic_pcd += frame_panoptic_pcd
-        num_point_clouds += 1
+        num_point_clouds = 0
+        for i in tqdm(range(0, len(all_rgb_image_files), params.dataset.hm3dsem.gt_skip_frames), desc="Processing frames"):
+            file_name = all_rgb_image_files[i]
+            tqdm.write(file_name)
+            rgb = cv2.imread(os.path.join(rgb_image_path, file_name))
+            rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
 
-        if num_point_clouds % 100 == 0:
-            # downsample point cloud
-            tqdm.write("--> downsampling point cloud")
-            # 这里没有对rgb/sem进行统计平均或者voteing策略，直接随机多选一
-            rgb_pcd = rgb_pcd.voxel_down_sample(voxel_size)
-            panoptic_pcd = panoptic_pcd.voxel_down_sample(voxel_size)
+            panoptic_ids = np.load(os.path.join(panoptic_image_path, file_name.replace("png", "npy")))
+            panoptic_rgb = np.zeros((panoptic_ids.shape[0], panoptic_ids.shape[1], 3), dtype=np.uint8)
+            for id, id_rgb in panoptic_scene.id2rgb.items():
+                panoptic_rgb[panoptic_ids == id, :] = id_rgb
+            # panoptic_image = Image.fromarray(panoptic_rgb) # as sanity check
+            # panoptic_image.save(os.path.join(walks_path, split, scene_dir, "panoptic", file_name))
+            depth = cv2.imread(os.path.join(depth_image_path, file_name), cv2.IMREAD_ANYDEPTH)
+            camera_pose = read_camera_pose_hmp3d(os.path.join(camera_pose_file_path, file_name.replace("png", "txt")))
+            poses.append(camera_pose[:3, 3])
+            frame_color_pcd = create_pcd_hmp3d(rgb, depth, camera_pose)
+            frame_panoptic_pcd = create_pcd_hmp3d(panoptic_rgb, depth, camera_pose)
+            rgb_pcd += frame_color_pcd
+            panoptic_pcd += frame_panoptic_pcd
+            num_point_clouds += 1
 
-    # # plot camera trajectory
-    # pose_min_coord = np.min(np.array(poses))
-    # pose_max_coord = np.max(np.array(poses))
-    # plt.figure()
-    # plt.xlim(pose_min_coord, pose_max_coord)
-    # plt.ylim(pose_min_coord, pose_max_coord)
-    # plt.gca().invert_yaxis()
-    # plt.plot(np.array(poses)[:, 0], np.array(poses)[:, 2])
-    # plt.grid()
-    # plt.savefig(os.path.join(walks_path, split, scene_dir, "cam_trajectory.png"))
+            if num_point_clouds % 100 == 0:
+                # downsample point cloud
+                tqdm.write("--> downsampling point cloud")
+                # 这里没有对rgb/sem进行统计平均或者voteing策略，直接随机多选一
+                rgb_pcd = rgb_pcd.voxel_down_sample(voxel_size)
+                panoptic_pcd = panoptic_pcd.voxel_down_sample(voxel_size)
 
-    print("full_pcd:", len(rgb_pcd.points))
-    rgb_pcd = rgb_pcd.voxel_down_sample(voxel_size)
-    print("full_pcd after voxelization:", len(rgb_pcd.points))
-    # save point cloud and mesh
-    o3d.io.write_point_cloud(os.path.join(walks_path, split, scene_dir, "scene_rgb.ply"), rgb_pcd)
+        # # plot camera trajectory
+        # pose_min_coord = np.min(np.array(poses))
+        # pose_max_coord = np.max(np.array(poses))
+        # plt.figure()
+        # plt.xlim(pose_min_coord, pose_max_coord)
+        # plt.ylim(pose_min_coord, pose_max_coord)
+        # plt.gca().invert_yaxis()
+        # plt.plot(np.array(poses)[:, 0], np.array(poses)[:, 2])
+        # plt.grid()
+        # plt.savefig(os.path.join(walks_path, split, scene_dir, "cam_trajectory.png"))
 
-    print("panoptic_pcd:", len(panoptic_pcd.points))
-    panoptic_pcd = panoptic_pcd.voxel_down_sample(voxel_size)
-    o3d.io.write_point_cloud(os.path.join(walks_path, split, scene_dir, "scene_panoptic.ply"), panoptic_pcd)
-    print("panoptic_pcd after voxelization:", len(panoptic_pcd.points))
+        print("full_pcd:", len(rgb_pcd.points))
+        rgb_pcd = rgb_pcd.voxel_down_sample(voxel_size)
+        print("full_pcd after voxelization:", len(rgb_pcd.points))
+        # save point cloud and mesh
+        o3d.io.write_point_cloud(os.path.join(walks_path, split, scene_dir, "scene_rgb.ply"), rgb_pcd)
 
-    # Go through panoptic point cloud and extract all points per object instance
-    # and save to separate point cloud file
-    if not os.path.exists(os.path.join(walks_path, split, scene_dir, "objects")):
-        os.makedirs(os.path.join(walks_path, split, scene_dir, "objects"))
-    if not os.path.exists(os.path.join(walks_path, split, scene_dir, "regions")):
-        os.makedirs(os.path.join(walks_path, split, scene_dir, "regions"))
+        print("panoptic_pcd:", len(panoptic_pcd.points))
+        panoptic_pcd = panoptic_pcd.voxel_down_sample(voxel_size)
+        o3d.io.write_point_cloud(os.path.join(walks_path, split, scene_dir, "scene_panoptic.ply"), panoptic_pcd)
+        print("panoptic_pcd after voxelization:", len(panoptic_pcd.points))
 
-    pan_colors = np.asarray(panoptic_pcd.colors)  # * 255).astype(np.uint8) # shape: Nx3, value-range:[0.0-1.0]
-    for obj in panoptic_scene.objects:
-        # 根据颜色一致性来聚合object-instance,位姿不对case,object-shape差。
-        id_filter = np.all(np.isclose(pan_colors - obj.rgb / 255.0, 0.0), axis=1)
-        print("Object ID: ", obj.id, "w/", np.sum(id_filter), "points")
-        obj_points = np.asarray(rgb_pcd.points)[id_filter, :]
-        obj_colors = np.asarray(rgb_pcd.colors)[id_filter, :]
+        # Go through panoptic point cloud and extract all points per object instance
+        # and save to separate point cloud file
+        if not os.path.exists(os.path.join(walks_path, split, scene_dir, "objects")):
+            os.makedirs(os.path.join(walks_path, split, scene_dir, "objects"))
+        if not os.path.exists(os.path.join(walks_path, split, scene_dir, "regions")):
+            os.makedirs(os.path.join(walks_path, split, scene_dir, "regions"))
 
-        if len(obj_points) > 0:
-            obj.mapped = True
-            # Add obj point cloud to objects and regions
-            panoptic_scene.objects[panoptic_scene.id2obj_idx[obj.id]].points = obj_points
-            panoptic_scene.objects[panoptic_scene.id2obj_idx[obj.id]].colors = obj_colors
+        pan_colors = np.asarray(panoptic_pcd.colors)  # * 255).astype(np.uint8) # shape: Nx3, value-range:[0.0-1.0]
+        for obj in panoptic_scene.objects:
+            # 根据颜色一致性来聚合object-instance,位姿不对case,object-shape差。
+            id_filter = np.all(np.isclose(pan_colors - obj.rgb / 255.0, 0.0), axis=1)
+            print("Object ID: ", obj.id, "w/", np.sum(id_filter), "points")
+            obj_points = np.asarray(rgb_pcd.points)[id_filter, :]
+            obj_colors = np.asarray(rgb_pcd.colors)[id_filter, :]
 
-            # object_points在这里才赋值的
-            obj_pcd = o3d.geometry.PointCloud()
-            obj_pcd.points = o3d.utility.Vector3dVector(obj_points)
-            obj_pcd.colors = o3d.utility.Vector3dVector(obj_colors)
+            if len(obj_points) > 0:
+                obj.mapped = True
+                # Add obj point cloud to objects and regions
+                panoptic_scene.objects[panoptic_scene.id2obj_idx[obj.id]].points = obj_points
+                panoptic_scene.objects[panoptic_scene.id2obj_idx[obj.id]].colors = obj_colors
+
+                # object_points在这里才赋值的
+                obj_pcd = o3d.geometry.PointCloud()
+                obj_pcd.points = o3d.utility.Vector3dVector(obj_points)
+                obj_pcd.colors = o3d.utility.Vector3dVector(obj_colors)
+                o3d.io.write_point_cloud(
+                    os.path.join(walks_path, split, scene_dir, "objects", "{}.ply".format(obj.id)), obj_pcd
+                )
+        
+        # 没有region聚类，统计同一个region的所有object几何信息
+        panoptic_scene.construct_regions()
+        # room 分类
+        panoptic_scene.label_regions(region_votes_file_path, region_labels_file_path)
+        panoptic_scene.obtain_floor_separation_heights(floor_labels_file_path)
+
+        # save region point clouds
+        for region in panoptic_scene.regions.values():
             o3d.io.write_point_cloud(
-                os.path.join(walks_path, split, scene_dir, "objects", "{}.ply".format(obj.id)), obj_pcd
+                os.path.join(walks_path, split, scene_dir, "regions", "{}.ply".format(region.id)),
+                region.region_point_cloud,
             )
-    
-    # 没有region聚类，统计同一个region的所有object几何信息
-    panoptic_scene.construct_regions()
-    # room 分类
-    panoptic_scene.label_regions(region_votes_file_path, region_labels_file_path)
-    panoptic_scene.obtain_floor_separation_heights(floor_labels_file_path)
 
-    # save region point clouds
-    for region in panoptic_scene.regions.values():
-        o3d.io.write_point_cloud(
-            os.path.join(walks_path, split, scene_dir, "regions", "{}.ply".format(region.id)),
-            region.region_point_cloud,
-        )
+        for region in list(panoptic_scene.regions.values()):
+            print(
+                "floor",
+                region.floor_id,
+                "region",
+                region.id,
+                "# obj",
+                len([obj for obj in region.objects if obj.mapped]),
+                "min/max/mean r-height",
+                region.min_height,
+                region.max_height,
+                region.mean_height,
+            )
 
-    for region in list(panoptic_scene.regions.values()):
-        print(
-            "floor",
-            region.floor_id,
-            "region",
-            region.id,
-            "# obj",
-            len([obj for obj in region.objects if obj.mapped]),
-            "min/max/mean r-height",
-            region.min_height,
-            region.max_height,
-            region.mean_height,
-        )
-
-    # write meta data infos to JSON file
-    panoptic_scene.write_metadata(os.path.join(walks_path, split, scene_dir))
+        # write meta data infos to JSON file
+        panoptic_scene.write_metadata(os.path.join(walks_path, split, scene_dir))
 
 
 if __name__ == "__main__":

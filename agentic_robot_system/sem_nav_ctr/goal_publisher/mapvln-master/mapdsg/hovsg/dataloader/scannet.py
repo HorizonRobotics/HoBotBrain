@@ -28,8 +28,12 @@ class ScannetDataset(RGBDDataset):
         self.transforms = cfg["transforms"]
         self.rgb_intrinsics = self._load_rgb_intrinsics(self.root_dir + "/intrinsic/intrinsic_color.txt")
         self.depth_intrinsics = self._load_depth_intrinsics(self.root_dir + "/intrinsic/intrinsic_depth.txt")
+        self.camera_matrix = self.depth_intrinsics
         self.scale = 1000.0
         self.data_list = self._get_data_list()
+
+    def get_camera_intrinsics(self):
+        return self.camera_matrix[:3, :3]
         
     def __getitem__(self, idx):
         """
@@ -78,6 +82,7 @@ class ScannetDataset(RGBDDataset):
         rgb_data_list.sort()
         depth_data_list.sort()
         pose_data_list.sort()
+        self.frameId2imgPath = rgb_data_list
         return list(zip(rgb_data_list, depth_data_list, pose_data_list))
         
     

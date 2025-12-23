@@ -27,6 +27,7 @@ class HorizonDataset(RGBDDataset):
         super(HorizonDataset, self).__init__(cfg)
         self.root_dir = cfg["root_dir"]
         self.transforms = cfg["transforms"]
+        self.depth_cut = float(cfg["depth_cut"])
         # pose_name = "colmap_pose"
         # camera_config_path = "orbslam3_rgbd.yaml"
         pose_name = "poses"
@@ -83,6 +84,9 @@ class HorizonDataset(RGBDDataset):
 
     def __len__(self):
         return len(self.indices)
+    
+    def get_camera_intrinsics(self):
+        return self.depth_intrinsics
     
     def load_camera_params(
         self, config_path: str, camera_name: str = None
@@ -241,7 +245,7 @@ class HorizonDataset(RGBDDataset):
 
         #use fastlivo2 depth, add depth clip preprocess
         depth = np.array(depth_image)
-        clip_depth_mask = depth > 10.0*1000
+        clip_depth_mask = depth > self.depth_cut*1000
         depth[clip_depth_mask] = 0
         depth_image = Image.fromarray(depth)
 

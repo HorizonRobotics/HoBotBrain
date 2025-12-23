@@ -27,6 +27,7 @@ class GoalPosePublisher(Node):
 
         # 创建发布者，消息类型为PoseStamped，话题名为/goal_pose，队列大小为10
         self.publisher_ = self.create_publisher(PoseStamped, '/object_pose', 10)
+        self.waypoint_found_pub = self.create_publisher(String, 'waypoint_reached', 10)
         # 订阅String话题
         self.subscription = self.create_subscription(
             String,
@@ -49,10 +50,10 @@ class GoalPosePublisher(Node):
         # 初始化计数器
         
 
-        self.get_logger().info('GoalPosePublisher 节点已启动，正在发布 /goal_pose 话题...')
+        self.get_logger().info('GoalPosePublisher 节点已启动，正在发布 /object_pose 话题...')
         #print(f"This node is running with Python at: {sys.executable}")
 
-    def pubpose(self, x, y):
+    def pubpose(self, x, y, z):
         # 创建PoseStamped消息
         msg = PoseStamped()
 
@@ -62,8 +63,11 @@ class GoalPosePublisher(Node):
 
         msg.pose.position.x = x
         msg.pose.position.y = y
-        msg.pose.position.z = 0.0
-
+        msg.pose.position.z = z
+        msg.pose.orientation.x = 0.0
+        msg.pose.orientation.y = 0.0
+        msg.pose.orientation.z = 0.0
+        msg.pose.orientation.w = 1.0
         # 设置目标朝向 - 这里使用简单的四元数表示
         # 让机器人始终朝向圆心
         #msg.pose.orientation = self.get_quaternion_from_euler(0, 0, angle + math.pi)
@@ -72,7 +76,7 @@ class GoalPosePublisher(Node):
         self.publisher_.publish(msg)
 
         # 记录日志
-        self.get_logger().info(f'发布第 {self.count} 个目标位姿: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}')
+        self.get_logger().info(f'发布第 {self.count} 个目标位姿: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}, z={msg.pose.position.z:.2f}')
 
         # 增加计数器
         self.count += 1
@@ -82,17 +86,32 @@ class GoalPosePublisher(Node):
         hovsg.load_graph(self.params.main.graph_path)
         self.use_gpt = self.params.main.use_gpt
         # 自主判断房间类型和名字
+        #hovsg.generate_room_names(
+        #    generate_method="view_embedding",
+        #    # digua_demo room_types
+        #    default_room_types=[                
+        #        "地瓜实验室",                               
+        #        "地平线展厅",
+        #        "地平线小邮局",
+        #        "长走廊",
+        #        "转角走廊",
+        #        "电梯间",                
+        #        "电梯",             
+        #    ]
+        #)
         hovsg.generate_room_names(
             generate_method="view_embedding",
             # digua_demo room_types
             default_room_types=[                
-                "地瓜实验室",                               
-                "地平线展厅",
-                "地平线小邮局",
-                "长走廊",
-                "转角走廊",
-                "电梯间",                
-                "电梯",             
+                "Hallway",                               
+                "Reception area",
+                "Exhibition Hall",
+                "Pantry",
+                "Corner Hallway",
+                "Elevator Lobby",                
+                "Lift",
+                "Office",
+                "Cafeteria",             
             ]
         )
         # 人为设定房间类型和名字
@@ -104,7 +123,6 @@ class GoalPosePublisher(Node):
         "转角走廊",
         "走廊",
         "地瓜电梯间接待区",]
-        '''
         designated_room_names_ic7f_demo = [      
         "none", 
         "none",
@@ -114,8 +132,7 @@ class GoalPosePublisher(Node):
         "茶水间",
         "办公休息区",
     ]
-    '''
-        designated_room_names_1014 = [      
+        designated_room_names_1014demo = [      
         "转角走廊",
         "none",
         "长走廊",
@@ -123,20 +140,67 @@ class GoalPosePublisher(Node):
         "none", 
         "none", 
         "长走廊",
+        "接待区",
         "none",
+        "地瓜办公区电梯间",]
+        designated_room_names_0918demo = [      
+        "接待区",]
+        
+        designated_room_names_1028demo = [      
         "none",
-        "地瓜机器人办公区",]
-        hovsg.set_room_names(room_names=designated_room_names_1014)
+        "会议室",
+        "实验室",
+        "none", 
+        "none", 
+        "活动区",]
+        
+        designated_room_names_0918demo = [      
+        "接待区",]
+        
+        designated_room_names_1030demo = [      
+        "会议室",
+        "户外",
+        "活动区",
+        "none", 
+        "none", 
+        "操作区", 
+        "会议室",
+        "实验室",
+        "活动区",]
+        designated_room_names_1127demo = [      
+        "none",
+        "会议室",
+        "电梯间",
+        "活动区", 
+        "none", 
+        "活动区", 
+        "none",]
+        hovsg.set_room_names(room_names=designated_room_names_1127demo)
     def hovsggetgoal_callback(self, msg):
         hovsg = self.graph
         query_instruction = '来自语音查找'
         ans = msg.data
         print(ans)
         start_time = time.time()
-        floor, room, obj, object_query = hovsg.query_hierarchy_protected(query_instruction, ans, top_k=5, use_gpt=self.use_gpt)
+        floor, room, obj, res_dict= hovsg.query_hierarchy_protected(query_instruction, ans, top_k=1, use_gpt=self.use_gpt)
         end_time = time.time()
+        print("obj: ", res_dict)
+        print("score: ", res_dict["object_scores"][0])
+        #print(type(res_dict))
         print(f"运行时间: {end_time - start_time:.4f} 秒")
-        
+        # save log for debug
+        # 构建要写入 JSON 的数据
+        #query_result = {
+        #    "query": query_instruction,
+        #    "room_query": res_dict["room_query"],
+        #    "object_query": res_dict["object_query"],
+        #    "time_seconds": query_time,
+        #    "floor_id": floor.floor_id,
+        #    "rooms": [{"room_id": r.room_id, "name": r.name} for r in room],
+        #    "objects": [{"object_id": o.object_id} for o in obj],
+        #    "objects_scores": res_dict["object_scores"]
+        #}        
+        #print(query_result)
         # handle the J6 芯片 badcase， top3能精准找到
         '''if "芯片" in query_instruction or "chip" in query_instruction.lower() or "mirror" in query_instruction.lower():
             if len(obj) > 1:
@@ -144,23 +208,19 @@ class GoalPosePublisher(Node):
         else:
             if len(obj) > 1:
                 obj = [obj[0]]'''
-
-        best_room_id = room[0].room_id
-        if best_room_id == "0_9":
-            if object_query == "":
-                if len(obj) > 4:
-                    obj = [obj[4]]
-        # object_query_lower = object_query.lower()
-        # if "rest" in object_query_lower:
-        #     if len(obj) > 1:
-        #         obj = [obj[1]]
-        # if "car" in object_query_lower:
-        #     if len(obj) > 1:
-        #         obj = [obj[1]]
-        # if "television" in object_query_lower:
-        #     if len(obj) > 1:
-        #         obj = [obj[1]]
-        
+        if res_dict["object_query"]!='unknown' and res_dict["object_scores"][0]<0.15:
+            msg = String()
+            msg.data = "not_found"
+            self.waypoint_found_pub.publish(msg)
+            print('not found')
+            return
+        elif res_dict["room_query"]=='unknown' and res_dict["object_query"]=='unknown' and res_dict["object_scores"][0]<0.18:
+            return
+        else:
+            msg = String()
+            msg.data = "found"
+            self.waypoint_found_pub.publish(msg)
+            print('found')
         
         # visualize the query
         print(floor.floor_id, [(r.room_id, r.name) for r in room], [o.object_id for o in obj])
@@ -174,8 +234,9 @@ class GoalPosePublisher(Node):
             obj_center_h = np.hstack((obj_center, 1.0))  # 齐次坐标 (4,)
             obj_center_in_map = (self.T_tomap @ obj_center_h)[:3]  
             print("obj_center in lidarmap: ", obj_center_in_map) 
-            self.pubpose(obj_center_in_map[0],obj_center_in_map[1])  
-                    
+            self.pubpose(obj_center_in_map[0],obj_center_in_map[1],obj_center_in_map[2])  
+        
+    '''                
     def hovsggetgoal(self):
         # loop forever and ask for query, until user click 'q'
         hovsg = self.graph
@@ -186,8 +247,9 @@ class GoalPosePublisher(Node):
             print(query)
             ans = ''
             start_time = time.time()
-            floor, room, obj = hovsg.query_hierarchy(query, ans, top_k=1)
+            floor, room, obj, res_dict = hovsg.query_hierarchy(query, ans, top_k=1)
             end_time = time.time()
+           
             print(f"运行时间: {end_time - start_time:.4f} 秒")
             # visualize the query
             print(floor.floor_id, [(r.room_id, r.name) for r in room], [o.object_id for o in obj])
@@ -202,7 +264,7 @@ class GoalPosePublisher(Node):
                 obj_center_in_map = (self.T_tomap @ obj_center_h)[:3]  
                 print("obj_center in lidarmap: ", obj_center_in_map) 
                 self.pubpose(obj_center_in_map[0],obj_center_in_map[1])  
-                
+       '''         
                     
 
 @hydra.main(version_base=None, config_path=get_package_share_directory('goal_publisher')+"/config", config_name="visualize_query_graph_demo")           
