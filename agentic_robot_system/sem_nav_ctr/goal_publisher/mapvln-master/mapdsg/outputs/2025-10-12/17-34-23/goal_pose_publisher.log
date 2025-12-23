@@ -1,0 +1,2 @@
+[2025-10-12 17:34:23,310][root][INFO] - Loaded ViT-L-14 model config.
+[2025-10-12 17:34:31,413][root][INFO] - Loading pretrained ViT-L-14 weights (/home/unitree/agentic_robot_system/inside_docker_install/open_clip_pytorch_model.bin).

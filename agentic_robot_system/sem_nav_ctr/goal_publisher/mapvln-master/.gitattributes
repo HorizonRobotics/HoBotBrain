@@ -1,0 +1,5 @@
+mapdsg/hovsg/data/hm3dsem/metadata/poses/00862-LT9Jq6dN3Ea.txt filter=lfs diff=lfs merge=lfs -text
+mapdsg/hovsg/labels/*.npy filter=lfs diff=lfs merge=lfs -text
+mapdsg/media/* filter=lfs diff=lfs merge=lfs -text
+*.txt filter=lfs diff=lfs merge=lfs -text
+mapdsg/hovsg/data/hm3dsem/metadata/poses/*.txt filter=lfs diff=lfs merge=lfs -text

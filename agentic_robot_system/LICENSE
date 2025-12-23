@@ -1,0 +1,24 @@
+LICENSE
+
+This project as a whole is licensed under the Apache License, Version 2.0.
+
+THIRD-PARTY LICENSES
+
+Third-party software already included in Agentic Robot System is governed by the separate 
+Open Source license terms under which the third-party software has been distributed.
+
+NOTICE ON LICENSE COMPATIBILITY FOR DISTRIBUTORS
+
+Notably, this project depends on the third-party software FAST-LIVO2 and HOVSG. 
+Their default licenses restrict commercial use—separate permission from their 
+original authors is required for commercial integration/redistribution.
+
+The third-party software FAST-LIVO2 dependency (licensed under GPL-2.0-only) 
+utilizes rpg_vikit-ros2 which contains components under the GPL-3.0. Please be 
+aware of license compatibility when distributing a combined work.
+
+DISCLAIMER
+
+Users are solely responsible for ensuring compliance with all applicable license 
+terms when using, modifying, or distributing the project. Project maintainers 
+accept no liability for any license violations arising from such use.

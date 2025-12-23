@@ -1,0 +1,3 @@
+[submodule "humble_localization_nav2/rpg_vikit-ros2"]
+	path = humble_localization_nav2/rpg_vikit-ros2
+	url = https://github.com/zhaoyu199201/rpg_vikit-ros2.git

@@ -1,0 +1,21 @@
+/**:
+  ros__parameters:
+    relo:
+        priorDir: "/workspace/1014_demo_map/"
+        cloudTopic: "/undistort_cloud"
+        poseTopic: "/aft_mapped_to_init"
+        searchDis: 2.0
+        searchNum: 2  # if the cloud is dense, please reset it to 1
+        trustDis: 5.0
+        # 0: ICP 1: AA-ICP 2: Our Fast ICP 3: Our Robust ICP 4: Our Fast and Robust ICP 5: ICP Point-to-plane
+        # 6: Our Fast and Robust ICP point to plane 7: Sparse ICP 8: Sparse ICP point to plane
+        regMode: 4 # (0~8), but methods 5, 6 and 8 need normal information
+        extrinsic_T: [-0.011,  -0.02329, 0.04412 ] # lidar to imu 
+        extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+        relo_interval: 10 # the reloc interval , 10 is recommended
+        sc_init_enable: false # sc初始化
+        external_flg: true # 手动初始化
+
+

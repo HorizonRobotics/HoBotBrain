@@ -1,0 +1,2 @@
+[2025-10-12 17:06:51,245][root][INFO] - Loaded ViT-L-14 model config.
+[2025-10-12 17:06:58,909][root][WARNING] - Pretrained weights (/home/unitree/ROS2/checkpoints/open_clip_pytorch_model.bin) not found for model ViT-L-14. Available pretrained tags (['openai', 'laion400m_e31', 'laion400m_e32', 'laion2b_s32b_b82k', 'datacomp_xl_s13b_b90k', 'commonpool_xl_clip_s13b_b90k', 'commonpool_xl_laion_s13b_b90k', 'commonpool_xl_s13b_b90k', 'metaclip_400m', 'metaclip_fullcc', 'dfn2b', 'dfn2b_s39b'].

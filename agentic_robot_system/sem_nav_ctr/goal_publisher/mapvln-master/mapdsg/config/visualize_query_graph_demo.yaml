@@ -1,0 +1,42 @@
+main:
+  device: cuda
+  use_gpt: false
+  dataset: horizon #scannet #horizon # hm3dsem #replica #iphone #horizon #replica #horizon #replica # scannet, replica
+  scene_id: rosbag2_2025_09_01-17_28_01  #rosbag2_2025_09_01-17_28_01 #rosbag2_2025_08_07-17_31_57 #rosbag2_2025_06_24-12_11_07_fast_livo # #rosbag2_2025_06_24-12_11_07_fast_livo #rosbag2_2025_07_18-19_16_33 #rosbag2_2025_06_24-12_11_07_fast_livo #rosbag2_2025_04_08-21_29_56 #rosbag2_2025_04_08-21_33_17 #demo_iphone_3 #ic4_loop #room0 #scene0518_00 #office0 # scene0011_00
+  dataset_path: /mnt/disk1/hovsg/HMA/data/D-robotics/3f-0901
+  graph_path: /home/unitree/ROS2/Map/D-robotics-0905/graph_20250918231049/graph_20250918231049
+  save_path:  /home/unitree/ROS2/G1_Nav_Ctr
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph(best)
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_ovseg/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_mergenew/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_merge/horizon/rosbag2_2025_08_07-17_31_57/graph(cur best)
+  #  /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_lowres_merge/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_newmap_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs/horizon/rosbag2_2025_08_07-17_31_57/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs/horizon/rosbag2_2025_07_18-19_16_33/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs/horizon/rosbag2_2025_06_24-12_11_07_fast_livo/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/scannet/scene_graph/scannet/scene0378_00/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs/horizon/rosbag2_2025_07_18-19_16_33/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs/horizon/rosbag2_2025_06_24-12_11_07_fast_livo/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_04_08-21_29_56/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/scene_graphs/hm3dsem/00824-Dd4bFSTQ8gi/graph
+  # /mnt/disk2/hovsg/HOV-SG/data/our_dataset/g1_navi/scene_graphs_lowres/horizon/rosbag2_2025_04_08-21_33_17/graph
+  # graph_path: /mnt/disk2/hovsg/HOV-SG/data/our_dataset/iphone_scan/scene_graph/iphone/demo_iphone_3/graph
+  # graph_path: /mnt/disk2/hovsg/HOV-SG/data/Replica_RGBD/scene_graph/replica/room0/graph
+  # graph_path: /mnt/disk2/hovsg/HOV-SG/data/scene_graphs/hm3dsem/00824-Dd4bFSTQ8gi/graph
+  # graph_path: /mnt/disk2/hovsg/HOV-SG/data/our_dataset/scene_graph_highres/horizon/kitchen/graph
+  long_query:
+    spec: [obj, room, floor] # [obj, room, floor], [obj, room], [obj, floor], [obj].
+models:
+  clip:
+    type: ViT-L/14 #ViT-B-32 #ViT-H-14 #ViT-H-14 # ViT-L/14@336px # ViT-H-14
+    checkpoint: /home/unitree/ROS2/checkpoints/open_clip_pytorch_model.bin 
+    # checkpoint: checkpoints/ovseg_clip.pth
+    # checkpoint: checkpoints/laion2b_s32b_b79k.bin # checkpoints/ovseg_clipl14_9a1909.pth checkpoints/laion2b_s32b_b79k.bin

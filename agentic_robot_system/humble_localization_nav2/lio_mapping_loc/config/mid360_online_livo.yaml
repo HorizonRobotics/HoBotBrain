@@ -1,0 +1,147 @@
+/**:
+  ros__parameters:
+    common:
+      img_topic: "/camera/color/image_raw"
+      lid_topic: "/livox/lidar"
+      imu_topic: "/livox/imu"
+      img_en: 0
+      lidar_en: 1
+      ros_driver_bug_fix: false
+      map_save_path: "/workspace/1014_demo_map/"
+      enable_zupt: false
+      zupt_noise: 0.05
+      zupt_interval: 2
+
+    extrin_calib:
+      extrinsic_T: [-0.011,  -0.02329, 0.04412 ]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+      # Rcl:  [0.011655022950524674,0.999887405374527,0.0094518259303820,
+      #           -0.1456078192590451,-0.00765461154776137,0.98931277657406127,
+      #           0.9892737353284218,-0.012906722877957133, 0.1455022099279030] 
+      # Rcl:  [0.009299227675749977,0.999946392926784,0.004553640010813265,
+      #           -0.14530493016492363, -0.0031542344303208125,0.989381891927947,
+      # #           0.9893432173085341,-0.009862153815069713, 0.1452678088487833]
+      # Rcl:  [0.024545703001916164,0.999692221853975,0.003601392620210142,
+      #           0.07703401743487737, -0.005483178371573416,0.9970133875293695,
+      #           0.9967262756755162,-0.02419496475733529,-0.07714489651562562]  
+      # Pcl: [0.0202558691479,  -0.090332519153, -0.14226594291672398]
+      # Pcl: [0.0296569647452, -0.08966987380371651,-0.15447925034787047]
+      # Pcl: [0.017855870393670304, -0.06312861634884805,-0.12928692233391803]
+      # # D-robotics G1
+      # Rcl:  [-0.007080601628202121,0.999796908840501,0.01886812533247145,
+      #           0.1386229669806484,-0.01770503328973083,0.9901869544796538,
+      #           0.990319917050073,0.0096266748770630,-0.13846945159401258]  
+      # Pcl: [-0.017091748445575178, -0.1823669423977071,-0.12780309949767013]
+      # # D-robotics_0829 G1
+      # Rcl:  [ -0.0043929280974568385,0.999879058932341,0.014918769765197515,
+      #           0.09987608552633859,-0.01440561209691893,0.9948955954672071,
+      #           0.9949901857418826,0.005860533140380597,-0.09980072358777958]  
+      # Pcl: [-0.01726482424685064, -0.1845735599913124,-0.1274169249728695]
+      # 1014 demo
+      Rcl:  [ 0.00553066,0.99988996,0.01304608,
+                0.10600987,-0.01355902,0.99427263,
+                0.9943497,-0.00411597,-0.10607422]  
+      Pcl: [0.0211214, -0.111421967,-0.10341184]
+    wheel:
+      enable_wheel_odom: true
+      est_wheel_extrinsic: false
+      R_wheel_to_imu:  [ 0.9991943951,  0.0000000000,  -0.0401317925,
+                    0.0000000000,  -1.0000000000,  0.0000000000,
+                   0.0401317925,  0.0000000000,  -0.9991943951]
+      # R_imu_to_wheel:  [ 0.9622501869,  0.1677312588,  -0.2146105150,
+      #               0.1710100717,  -0.9850373045,  -0.006928908,
+      #              -0.2113091309,  -0.030115368960000,  -0.97729991943951]
+      p_wheel_to_imu:  [0.0001,  0.00001,  0.40618 ]
+      # 速度量测噪声
+      wheel_mea_cov:  [0.005, 0.01, 0.01]
+
+
+    time_offset: 
+      imu_time_offset: 0.0
+      img_time_offset: 0.0
+      exposure_time_init: 0.0
+      lidar_time_offset: 0.0
+
+    preprocess:
+      point_filter_num: 2 # 1 for mapping; 2 for reloc
+      filter_size_surf: 0.10
+      lidar_type: 1 # Livox Avia LiDAR
+      scan_line: 6
+      blind: 0.1
+      max_range: 200.0
+      feature_extract_enabled: false
+      img_filter_en: true
+      img_filter_fre: 2 # filter image frequency
+    vio:
+      max_iterations: 5
+      outlier_threshold: 1000 # 78 100 156 #100 200 500 700 infinite
+      img_point_cov: 100 # 100 1000 
+      patch_size: 8
+      patch_pyrimid_level: 10
+      normal_en: true
+      raycast_en: false
+      inverse_composition_en: false
+      exposure_estimate_en: true
+      inv_expo_cov: 0.1
+
+    imu:
+      imu_en: true
+      imu_int_frame: 50
+      acc_cov: 0.2 # 0.2
+      gyr_cov: 0.5 # 0.5
+      b_acc_cov: 0.001 # 0.1
+      b_gyr_cov: 0.001 # 0.1
+
+    lio:
+      max_iterations: 3
+      dept_err: 0.02
+      beam_err: 0.05
+      min_eigen_value: 0.005 # 0.005 
+      voxel_size: 0.25 #
+      max_layer: 2
+      max_points_num: 50
+      layer_init_num: [5, 5, 5, 5, 5]
+      max_voxel_num: 20000
+
+    local_map:  
+      map_sliding_en: false
+      half_map_size: 100
+      sliding_thresh: 8.0
+
+    uav:
+      imu_rate_odom: false
+      gravity_align_en: true
+
+    publish:
+      dense_map_en: false # 
+      pub_effect_point_en: false 
+      pub_plane_en: false
+      pub_scan_num: 1
+      pub_rgb_cloud_en: false # true for mapping visualization, false for reloc
+      blind_rgb_points: 0.1
+      rgb_cloud_interval: 4 # local rgb cloud interval
+      depth_en: false # publish depth image
+      viz_timer_ms: 33 # 33ms for 30Hz, 50ms for 20Hz
+
+    evo:
+      seq_name: "g1"
+      pose_output_en: false
+
+    pcd_save:
+      pcd_save_en: false # false for reloc; true for mapping；save to /map
+      colmap_output_en: false #  mainly used to generate colmap files, set false when not needed
+      interval: -1 # used to generate pcd file for per-frame, set -1 when not needed
+      filter_size_pcd: 0.04 # 0.04 for reloc to accelerate; 0.02 for mapping
+    loop:
+      loop_closure_enable_flag: false
+      loop_closure_frequency: 10.0
+      history_keyframe_search_radius: 15.0
+      history_keyframe_search_time_diff: 30.0
+      history_keyframe_search_num: 25
+      history_keyframe_fitness_score: 0.3
+    mapping:
+      keyframeAddingDistThreshold: 0.5
+      keyframeAddingAngleThreshold: 0.10
+      enable_gtsam: false

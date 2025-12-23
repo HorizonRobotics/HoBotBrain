@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package>
+  <name>vikit_py</name>
+  <version>0.0.0</version>
+  <description>The vikit_py package</description>
+  <maintainer email="forster@ifi.uzh.ch">Christian Forster</maintainer>
+  <license>BSD</license>
+
+  <depend>rclpy</depend>
+
+  <export>
+    <built_type>ament_python</built_type>
+  </export>
+</package>

@@ -1,0 +1,1 @@
+python -m habitat_sim.utils.datasets_download --username 2d442e8efe6bf0a7 --password 5979859875a07eb7ba84ee71e7d3a0a1 --uids hm3d_val_v0.2

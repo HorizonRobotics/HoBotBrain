@@ -1,0 +1,17 @@
+main:
+  device: cuda
+  use_gpt: false
+  dataset: horizon
+  scene_id: rosbag2_2025_09_01-17_28_01
+  dataset_path: /mnt/disk1/hovsg/HMA/data/D-robotics/3f-0901
+  graph_path: /home/unitree/agentic_robot_system/inside_docker_install/rosbag2_2025_09_01-17_28_01/graph
+  save_path: /home/unitree/agentic_robot_system/inside_docker_install/G1NavCode-Ros2Version/sem_nav
+  long_query:
+    spec:
+    - obj
+    - room
+    - floor
+models:
+  clip:
+    type: ViT-L/14
+    checkpoint: /home/unitree/ROS2/checkpoints/open_clip_pytorch_model.bin
